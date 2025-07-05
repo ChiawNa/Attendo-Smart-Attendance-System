@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>{{ title }}</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/semantic-ui/dist/semantic.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css?family=Muli:300,400,400i,600,700"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
+      integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://use.fontawesome.com/releases/v5.5.0/css/all.css"
+      integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU"
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href="/static/assets/css/main.min.css?v=2" />
+  </head>
+  <body>
+    <div id="page-container">
+      <!-- Hero -->
+      <div class="hero">
+        <div class="bg-hero"></div>
+        <div class="container position-relative">
+          <!-- Header -->
+          <header class="py-5">
+            <div class="row">
+              <div class="col-md-4 text-center text-md-left mb-3 mb-md-0">
+                <a class="text-light h4" href="/">
+                  <i class="fa fa-expand text-white-50 mr-1"></i> Attendo
+                </a>
+              </div>
+              <div class="col-md-8">
+                <nav
+                  class="nav nav-header justify-content-center justify-content-md-end"
+                >
+                  <a class="nav-link" href="/enroll">Enroll</a>
+                  <a class="nav-link" href="/recognize">Recognize</a>
+                  <a class="nav-link" href="/records">Records</a>
+                </nav>
+              </div>
+            </div>
+          </header>
+
+          <div class="ui container">
+            <h1 class="ui header" style="color: white">{{ title }}</h1>
+            <p style="color: white">Welcome to the {{ title }} page.</p>
+
+            <!-- Enrollment Form -->
+            <div class="ui segment">
+              <form class="ui form" method="post" action="/enroll">
+                <div class="field">
+                  <label>Student Name</label>
+                  <input
+                    type="text"
+                    name="name"
+                    placeholder="Enter student name"
+                    required
+                  />
+                </div>
+
+                <div class="field">
+                  <label>Age</label>
+                  <input
+                    type="number"
+                    name="age"
+                    placeholder="Enter age"
+                    min="5"
+                    required
+                  />
+                </div>
+
+                <div class="field">
+                  <label>Enrolled Classes</label>
+                  <div class="ui checkbox">
+                    <input
+                      type="checkbox"
+                      name="enrolled_classes"
+                      value="Computer Vision And Pattern Recognition"
+                    />
+                    <label>Computer Vision And Pattern Recognition</label>
+                  </div>
+                  <br />
+                  <div class="ui checkbox">
+                    <input
+                      type="checkbox"
+                      name="enrolled_classes"
+                      value="High Performance Computing"
+                    />
+                    <label>High Performance Computing</label>
+                  </div>
+                  <br />
+                  <div class="ui checkbox">
+                    <input
+                      type="checkbox"
+                      name="enrolled_classes"
+                      value="Engineering Economy"
+                    />
+                    <label>Engineering Economy</label>
+                  </div>
+                </div>
+
+                <button class="ui primary button" type="submit">
+                  Submit Enrollment
+                </button>
+              </form>
+            </div>
+
+            <!-- Start Training -->
+            <div class="ui segment">
+              <button class="ui basic green button" onclick="startTraining()">
+                Start Training
+              </button>
+              <button class="ui basic red button" onclick="clearData()">Clear Data</button>
+              <p id="status"></p>
+              <div id="log"></div>
+              <div id="results"></div>
+            </div>
+
+            <!-- Webcam Frame + Overlay + Progress -->
+            <div class="ui segment" style="padding: 0; border: none">
+              <div
+                id="webcam-container"
+                style="
+                  display: none;
+                  position: relative;
+                  width: fit-content;
+                  margin: auto;
+                "
+              >
+                <img
+                  id="annotated-stream"
+                  src=""
+                  alt="Webcam Stream"
+                  style="width: 640px; height: 480px; border: 1px solid #ccc"
+                />
+
+                <!-- Sample Count Overlay -->
+                <div
+                  id="sample-count"
+                  style="
+                    position: absolute;
+                    top: 10px;
+                    left: 10px;
+                    color: red;
+                    font-size: 24px;
+                    font-weight: bold;
+                    text-shadow: 1px 1px white;
+                  "
+                >
+                  Samples: 0/30
+                </div>
+              </div>
+
+              <!-- Progress Bar -->
+              <div
+                id="progress-container"
+                style="
+                  width: 640px;
+                  height: 30px;
+                  background-color: #eee;
+                  margin: 5px auto 0 auto;
+                "
+              >
+                <div
+                  id="progress-bar"
+                  style="width: 0%; height: 100%; background-color: #4caf50"
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="ui center aligned segment" style="background: #f9f9f9">
+      <p>© 2025 Attendo</p>
+    </footer>
+
+    <!-- Sounds -->
+    <audio
+      id="enrollSound"
+      src="/static/sound/enroll_complete.wav"
+      preload="auto"
+    ></audio>
+    <audio
+      id="trainingComplete"
+      src="/static/sound/training_complete.wav"
+      preload="auto"
+    ></audio>
+  <script>
+    function clearData() {
+      fetch("http://localhost:8000/clear-data", {
+        method: "POST"
+      })
+      .then(async response => {
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error("Server error: " + errorText);
+        }
+        return response.json();
+      })
+      .then(data => {
+        alert(data.message || "Data cleared successfully");
+        document.getElementById("status").innerText = "";
+        document.getElementById("log").innerHTML = "";
+        document.getElementById("results").innerHTML = "";
+      })
+      .catch(error => {
+        console.error("Error clearing data:", error);
+        alert("Failed to clear data: " + error.message);
+      });
+    }
+  </script>
+    <!-- Script -->
+    <script>
+      let ws;
+      let captureCount = 0;
+      const TOTAL_SAMPLES = 30; // Set the total number of samples you want to capture
+
+      function openWebcamAndCapture() {
+        const video = document.createElement("video");
+        video.autoplay = true;
+        video.playsInline = true;
+
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          navigator.mediaDevices
+            .getUserMedia({ video: true })
+            .then((stream) => {
+              video.srcObject = stream;
+              video.play();
+              window.localVideoStream = stream;
+              window.localVideo = video;
+              sendFrameLoop();
+            })
+            .catch((err) => {
+              alert("Could not access webcam: " + err);
+            });
+        } else {
+          alert("getUserMedia not supported in this browser.");
+        }
+      }
+
+      function stopWebcam() {
+        if (window.localVideoStream) {
+          window.localVideoStream.getTracks().forEach((track) => track.stop());
+        }
+        window.localVideoStream = null;
+        window.localVideo = null;
+        document.getElementById("webcam-container").style.display = "none";
+      }
+
+      function sendFrameLoop() {
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        if (!window.localVideo) {
+          setTimeout(sendFrameLoop, 100);
+          return;
+        }
+
+        const video = window.localVideo;
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataURL = canvas.toDataURL("image/jpeg");
+
+        ws.send(dataURL);
+        setTimeout(sendFrameLoop, 200);
+      }
+
+      // On page load
+      window.addEventListener("DOMContentLoaded", () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const enrolledName = urlParams.get("name");
+        if (enrolledName) {
+          ws = new WebSocket(
+            `ws://${location.host}/ws/enroll_capture/${enrolledName}`
+          );
+
+          ws.onopen = () => {
+            console.log("WebSocket connected");
+            document.getElementById("webcam-container").style.display = "block";
+            captureCount = 0;
+            // Reset the sample counter and progress bar
+            document.getElementById(
+              "sample-count"
+            ).textContent = `Samples: 0/${TOTAL_SAMPLES}`;
+            document.getElementById("progress-bar").style.width = "0%";
+            // Make sure progress bar is visible when starting
+            document.querySelector("#webcam-container + div").style.display =
+              "block";
+
+            openWebcamAndCapture();
+          };
+
+          ws.onmessage = (event) => {
+            const msg = event.data;
+
+            if (msg.startsWith("captured:")) {
+              // Update the capture count from the server message
+              captureCount = parseInt(msg.split(":")[1]);
+
+              // Update sample counter in real-time
+              const sampleCountElement =
+                document.getElementById("sample-count");
+              sampleCountElement.textContent = `Samples: ${captureCount}/${TOTAL_SAMPLES}`;
+
+              // Update progress bar in real-time
+              const progressPercent = Math.min(
+                (captureCount / TOTAL_SAMPLES) * 100,
+                100
+              );
+              document.getElementById("progress-bar").style.width =
+                progressPercent + "%";
+
+              // Change color when complete
+              if (captureCount >= TOTAL_SAMPLES) {
+                sampleCountElement.style.color = "green";
+              }
+            } else if (msg === "done") {
+              document
+                .getElementById("enrollSound")
+                .play()
+                .catch(console.error);
+              alert("Face capture completed!");
+              ws.close();
+              stopWebcam();
+
+              // Hide the progress bar container when done
+              document.querySelector("#webcam-container + div").style.display =
+                "none";
+            } else if (msg === "no_face") {
+              console.log("No face detected");
+            } else if (msg.startsWith("data:image/jpeg;base64,")) {
+              document.getElementById("annotated-stream").src = msg;
+            }
+          };
+
+          ws.onclose = () => {
+            console.log("WebSocket closed");
+          };
+        }
+      });
+
+      async function startTraining() {
+        document.getElementById("status").innerText = "Training started...";
+        document.getElementById("log").innerText = "";
+        document.getElementById("results").innerHTML = "";
+
+        const res = await fetch("/train/start", { method: "POST" });
+        const data = await res.json();
+        const sessionId = data.session_id;
+
+        pollStatus(sessionId);
+      }
+
+      async function pollStatus(sessionId) {
+        const statusRes = await fetch(`/train/status/${sessionId}`);
+        const data = await statusRes.json();
+
+        document.getElementById("status").innerText = `Status: ${data.status}`;
+        if (data.log) {
+          document.getElementById("log").innerText = data.log;
+        }
+
+        if (data.status === "done" || data.status === "error") {
+          document
+            .getElementById("trainingComplete")
+            .play()
+            .catch(console.error);
+          return;
+        }
+
+        setTimeout(() => pollStatus(sessionId), 1000);
+      }
+    </script>
+  </body>
+</html>
